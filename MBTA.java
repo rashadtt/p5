@@ -1,86 +1,136 @@
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 
 public class MBTA {
-
-  private Map<String, List<String>> lines = new HashMap<>();
-  private Map<String, List<String>> journeys = new HashMap<>();
+  public Log log = new Log();
+  public Map<Train, List<Station>> lines = new HashMap<>();
+  public Map<Passenger, List<Station>> trips = new HashMap<>();
+  public Map<Passenger, Boolean> arrived = new ConcurrentHashMap<>();
+  public Config config = new Config();
+  public volatile boolean isDone = false;
 
   // Creates an initially empty simulation
   public MBTA() { }
 
   // Adds a new transit line with given name and stations
-  public void addLine(String name, List<String> stations) { lines.put(name, stations); }
+  public void addLine(String name, List<String> stations) {
+    Train train = Train.make(name);
+    List<Station> stationList = new ArrayList<>();
+    for (String station : stations){
+      stationList.add(Station.make(station));
+    }
+
+    train.stations = stationList;
+    train.currentStation = stationList.getFirst();
+    train.currentStation.currentTrain = train;
+    lines.put(train, stationList);
+  }
 
   // Adds a new planned journey to the simulation
   public void addJourney(String name, List<String> stations) {
-    journeys.put(name, stations);
+    Passenger passenger = Passenger.make(name);
+    List<Station> stationList = new ArrayList<>();
+    for (String station : stations){
+      stationList.add(Station.make(station));
+    }
+
+    passenger.currentStation = stationList.getFirst();
+    passenger.journey = stationList;
+    for (Train train : lines.keySet()) {
+      if (train.stations.contains(passenger.getCurrentStation()) && train.stations.contains(passenger.getNextStation())) {
+        passenger.nextTrain = train;
+      }
+    }
+    trips.put(passenger, stationList);
+    arrived.put(passenger, false);
   }
 
   // Return normally if initial simulation conditions are satisfied, otherwise
   // raises an exception
   public void checkStart() {
+    for (Passenger passenger : trips.keySet()){
+      if (passenger.currentStation != passenger.journey.getFirst()){
+        throw new RuntimeException();
+      }
+    }
+
+    for (Train train : lines.keySet()){
+      if (train.currentStation != train.stations.getFirst() || train.stations.getFirst().currentTrain != train){
+        throw new RuntimeException();
+      }
+    }
   }
 
   // Return normally if final simulation conditions are satisfied, otherwise
   // raises an exception
   public void checkEnd() {
+    if (arrived.containsValue(false)){
+      throw new UnsupportedOperationException();
+    }
   }
 
   // reset to an empty simulation
   public void reset() {
     lines.clear();
-    journeys.clear();
+    trips.clear();
+    for (Passenger passenger : Entity.passengers.values()){
+      passenger.journey = new ArrayList<>();
+      passenger.currentStationIndex = 0;
+      passenger.currentStation = null;
+      passenger.currentTrain = null;
+      passenger.nextTrain = null;
+      passenger.isOnTrain = false;
+      passenger.arrived = false;
+      passenger.mbta = new MBTA();
+      passenger.log = new Log();
+    }
+    for (Station station : Entity.stations.values()){
+      station.currentTrain = null;
+    }
+    for (Train train : Entity.trains.values()){
+      train.stations = new ArrayList<>();
+      train.currentStationIndex = 0;
+      train.currentStation = null;
+      train.isMovingForward = true;
+      train.mbta = new MBTA();
+      train.log = new Log();
+    }
+
+    config.lines.clear();
+    config.trips.clear();
+    config = new Config();
+    arrived = new ConcurrentHashMap<>();
   }
 
   // adds simulation configuration from a file
-  public void loadConfig(String filename) throws FileNotFoundException, IOException {
+  public void loadConfig(String filename) throws IOException {
     InputStream input = new FileInputStream(filename);
     JsonReader reader = new JsonReader(new InputStreamReader(input));
+    Gson gson = new Gson();
+    config = gson.fromJson(reader, Config.class);
 
-    reader.beginObject();
-    while (reader.hasNext()){
-      String name = reader.nextName();
-      if (name.equals("lines")){
-        reader.beginObject();
-        while (reader.hasNext()){
-          String color = reader.nextName();
-          List<String> stations = new ArrayList<>();
-          reader.beginArray();
-          while (reader.hasNext()){
-            String station = reader.nextString();
-            Entity.entities.get("Stations").put(station, Station.make(station));
-            stations.add(station);
-          }
-          lines.put(color, stations);
-          reader.endArray();
-        }
-        reader.endObject();
-      } else if (name.equals("trips")){
-        reader.beginObject();
-        while (reader.hasNext()){
-          String passenger = reader.nextString();
-          Entity.entities.get("Passengers").put(passenger, Passenger.make(passenger));
-          List<String> trips = new ArrayList<>();
-          reader.beginArray();
-          while (reader.hasNext()){
-            trips.add(reader.nextString());
-          }
-          journeys.put(passenger, trips);
-          reader.endArray();
-        }
-        reader.endObject();
-      }
+    for (String line : config.lines.keySet()){
+      addLine(line, config.lines.get(line));
     }
-    reader.endObject();
+
+    for (String passenger : config.trips.keySet()){
+      addJourney(passenger, config.trips.get(passenger));
+    }
   }
 
-  public String toString(){
-    StringBuilder sb = new StringBuilder();
-    sb.append(lines);
-    sb.append(journeys);
-    return sb.toString();
+  public void setMBTAandLog(){
+    for (Passenger passenger : trips.keySet()){
+      passenger.mbta = this;
+      passenger.log = log;
+    }
+
+    for (Train train : lines.keySet()){
+      train.mbta = this;
+      train.log = log;
+    }
   }
 }

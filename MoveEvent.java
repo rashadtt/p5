@@ -21,6 +21,12 @@ public class MoveEvent implements Event {
     return List.of(t.toString(), s1.toString(), s2.toString());
   }
   public void replayAndCheck(MBTA mbta) {
-    throw new UnsupportedOperationException();
+    if (!t.getCurrentStation().equals(s1)) {
+      throw new UnsupportedOperationException();
+    }
+    if (!t.getNextStation().equals(s2)) {
+      throw new UnsupportedOperationException();
+    }
+    t.move();
   }
 }

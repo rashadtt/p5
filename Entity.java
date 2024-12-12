@@ -1,13 +1,11 @@
 import java.util.*;
 
 public abstract class Entity {
-  private final String name;
-
-  public static Map<String, Map<String, Entity>> entities = Map.of(
-          "Train", new HashMap<>(),
-          "Passengers", new HashMap<>(),
-          "Stations", new HashMap<>()
-  );
+  final String name;
+  public static Map<String, Passenger> passengers = new HashMap<>();
+  public static Map<String, Station> stations = new HashMap<>();
+  public static Map<String, Train> trains = new HashMap<>();
+//  public static MBTA m = new MBTA();
 
   protected Entity(String name) { this.name = name; }
 

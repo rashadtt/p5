@@ -1,0 +1,18 @@
+The simulation instantiates a thread for each passenger and each train.
+It sets the values of mbta and log in all the passengers and trains to the mbta and log passed into run_sim.
+
+In the run method of train, a train acquires the lock on the next station on its line, and while that station is occupied it awaits on the condition associated with the lock for the next station.
+When that station is no longer occupied, the train that left will signal all those awaiting on the condition of the lock to awake.
+The train headed to that station will acquire that lock, and then acquire the lock for the station it currently is at.
+It will then move to the new station, updating the relevant fields regarding the move.
+It will then relinquish the lock for the previous station, then will relinquish the lock for the current station.
+It will signal all on each lock before relinquishing it.
+
+In the run method of passenger, a passenger will await on the condition of the lock for the station they're currently at.
+When the relevant train arrives, the passenger will get the lock again, board, then relinquish the lock, signaling all.
+The passenger will then await on the condition of the lock for their next station.
+When their train has arrived at that station, the passenger will get the lock back, and deboard.
+If they have more stops on their journey, they will relinquish the lock on the station, signal all, and repeat the process.
+If their journey is done, they will update the arrived concurrent hashmap to indicate they've arrived.
+Each time a passenger is done with their journey, a check on the values of arrived will occur.
+If all values are true, then the simulation will end.

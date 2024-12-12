@@ -21,6 +21,24 @@ public class BoardEvent implements Event {
     return List.of(p.toString(), t.toString(), s.toString());
   }
   public void replayAndCheck(MBTA mbta) {
-    throw new UnsupportedOperationException();
+//    if (p.isOnTrain || !p.getCurrentStation().equals(s) || !t.getCurrentStation().equals(s) || p.nextTrain == null || !p.nextTrain.equals(t)){
+//      throw new UnsupportedOperationException();
+//    }
+    if (p.isOnTrain){
+      throw new NoSuchElementException();
+    }
+    if (!p.getCurrentStation().equals(s)){
+      throw new UnsupportedOperationException();
+    }
+    if (!t.getCurrentStation().equals(s)){
+      throw new NullPointerException();
+    }
+//    if (p.nextTrain == null){
+//      throw new ArithmeticException();
+//    }
+    if (p.nextTrain != null && !p.nextTrain.equals(t)){
+      throw new ArrayStoreException();
+    }
+    p.boardTrain(t);
   }
 }

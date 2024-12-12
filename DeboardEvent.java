@@ -21,6 +21,9 @@ public class DeboardEvent implements Event {
     return List.of(p.toString(), t.toString(), s.toString());
   }
   public void replayAndCheck(MBTA mbta) {
-    throw new UnsupportedOperationException();
+    if (!p.isOnTrain || !p.getNextStation().equals(s) || !t.currentStation.equals(s) || !s.currentTrain.equals(t)){
+      throw new UnsupportedOperationException();
+    }
+    p.deboardTrain();
   }
 }
